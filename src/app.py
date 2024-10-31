@@ -6,7 +6,7 @@ import plotly.graph_objects as go
 import datetime
 
 # Load the dataset
-file_path = "C:\\Users\\Clarence\\Downloads\\NLB_Top100\\Top_100_OD_Titles_CY2020_to_2023.xlsx"
+file_path = "https://github.com/clarence-ck/NLB_Top100/raw/refs/heads/main/Top_100_OD_Titles_CY2020_to_2023.xlsx"
 data = pd.read_excel(file_path, sheet_name='Sheet1')
 
 # Data Preprocessing
