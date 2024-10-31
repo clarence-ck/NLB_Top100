@@ -6,7 +6,7 @@ import plotly.graph_objects as go
 from datetime import datetime
 
 # Load the dataset
-file_path = './Top_100_OD_Titles_CY2020_to_2023.xlsx'
+file_path = "https://github.com/clarence-ck/NLB_Top100/blob/main/src/Top_100_OD_Titles_CY2020_to_2023.xlsx"
 data = pd.read_excel(file_path, sheet_name='Sheet1')
 
 # Convert 'Title Publication Date' to datetime
