@@ -26,8 +26,8 @@ data['Subject'] = data['Subject'].astype(str)
 total_titles = data['Title Native Name'].nunique()
 total_authors = data['Title Author'].nunique()
 total_publishers = data['Title Publisher'].nunique()
-most_common_pub_year = data['Publication Year'].mode()[0]
-average_rank = round(data['Rank'].mean(), 2)
+earliest_publication = data['Title Publication Date'].min().strftime('%Y-%m-%d')
+latest_publication = data['Title Publication Date'].max().strftime('%Y-%m-%d')
 
 # Initialize Dash app with a Bootstrap theme
 app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
@@ -121,14 +121,14 @@ app.layout = dbc.Container([
         ], color="light", inverse=False), width=2),
         dbc.Col(dbc.Card([
             dbc.CardBody([
-                html.H4(f"{most_common_pub_year}", className="card-title text-center", style={'color': colors['accent']}),
-                html.P("Most Common Publication Year", className="text-center", style={'color': colors['text']})
+                html.H4(f"{earliest_publication}", className="card-title text-center", style={'color': colors['accent']}),
+                html.P("Earliest Publication Date", className="text-center", style={'color': colors['text']})
             ])
         ], color="light", inverse=False), width=3),
         dbc.Col(dbc.Card([
             dbc.CardBody([
-                html.H4(f"{average_rank}", className="card-title text-center", style={'color': colors['accent']}),
-                html.P("Average Rank (Lower is Better)", className="text-center", style={'color': colors['text']})
+                html.H4(f"{latest_publication}", className="card-title text-center", style={'color': colors['accent']}),
+                html.P("Latest Publication Date", className="text-center", style={'color': colors['text']})
             ])
         ], color="light", inverse=False), width=3),
     ], className="mb-5"),
@@ -138,12 +138,12 @@ app.layout = dbc.Container([
         # Overview Tab
         dbc.Tab(label='Overview', tab_id='tab-overview', children=[
             dbc.Row([
-                dbc.Col(dcc.Graph(id='media-type-bar'), width=6),
-                dbc.Col(dcc.Graph(id='top-subjects-treemap'), width=6),
+                dbc.Col(dcc.Graph(id='media-type-distribution'), width=6),
+                dbc.Col(dcc.Graph(id='top-subjects-bar'), width=6),
             ], className="mb-4"),
 
             dbc.Row([
-                dbc.Col(dcc.Graph(id='publication-year-histogram'), width=6),
+                dbc.Col(dcc.Graph(id='publication-year-distribution'), width=6),
                 dbc.Col(dcc.Graph(id='yearly-trend-chart'), width=6),
             ]),
         ]),
@@ -162,7 +162,7 @@ app.layout = dbc.Container([
                         marks={i: str(i) for i in range(5, 21, 5)},
                         tooltip={"placement": "bottom", "always_visible": True},
                     ),
-                    dcc.Graph(id='author-rank-bar')
+                    dcc.Graph(id='author-heatmap')
                 ], width=12),
             ], className="mb-4"),
             dbc.Row([
@@ -175,7 +175,7 @@ app.layout = dbc.Container([
                         multi=True,
                         placeholder="Select Title(s)",
                     ),
-                    dcc.Graph(id='rank-slope-chart')
+                    dcc.Graph(id='rank-trend-line')
                 ], width=12),
             ]),
         ]),
@@ -191,12 +191,12 @@ app.layout = dbc.Container([
     Output('total-titles', 'children'),
     Output('total-authors', 'children'),
     Output('total-publishers', 'children'),
-    Output('media-type-bar', 'figure'),
-    Output('top-subjects-treemap', 'figure'),
-    Output('publication-year-histogram', 'figure'),
+    Output('media-type-distribution', 'figure'),
+    Output('top-subjects-bar', 'figure'),
+    Output('publication-year-distribution', 'figure'),
     Output('yearly-trend-chart', 'figure'),
-    Output('author-rank-bar', 'figure'),
-    Output('rank-slope-chart', 'figure'),
+    Output('author-heatmap', 'figure'),
+    Output('rank-trend-line', 'figure'),
     Input('year-filter', 'value'),
     Input('subject-filter', 'value'),
     Input('media-filter', 'value'),
@@ -225,90 +225,98 @@ def update_charts(selected_years, selected_subjects, selected_media, start_date,
     total_authors = filtered_data['Title Author'].nunique()
     total_publishers = filtered_data['Title Publisher'].nunique()
 
-    # Media Type Bar Chart
+    # Media Type Distribution Donut Chart
     if not filtered_data.empty:
         media_counts = filtered_data['Item Media'].value_counts().reset_index()
         media_counts.columns = ['Item Media', 'Count']
-        fig_media = px.bar(media_counts, x='Item Media', y='Count',
-                           color='Item Media', title='Media Type Distribution',
-                           color_discrete_sequence=px.colors.qualitative.Set2)
-        fig_media.update_layout(margin=dict(t=50, l=25, r=25, b=25),
-                                showlegend=False)
+        fig_media = px.pie(media_counts, names='Item Media', values='Count', hole=0.5,
+                           color_discrete_sequence=px.colors.sequential.Viridis,
+                           title='Media Type Distribution')
+        fig_media.update_traces(textposition='inside', textinfo='percent+label')
+        fig_media.update_layout(margin=dict(t=50, l=25, r=25, b=25))
     else:
         fig_media = go.Figure()
 
-    # Top Subjects Treemap
+    # Top Subjects Bar Chart
     if not filtered_data.empty:
-        subject_counts = filtered_data['Subject'].value_counts().reset_index()
-        subject_counts.columns = ['Subject', 'Count']
-        fig_subjects = px.treemap(subject_counts, path=['Subject'], values='Count',
-                                  title='Top Subjects', color='Count',
-                                  color_continuous_scale=px.colors.sequential.Plasma)
-        fig_subjects.update_layout(margin=dict(t=50, l=25, r=25, b=25))
+        top_subjects = filtered_data['Subject'].value_counts().head(10).reset_index()
+        top_subjects.columns = ['Subject', 'Count']
+        fig_subjects = px.bar(top_subjects, x='Count', y='Subject', orientation='h',
+                              title='Top 10 Subjects', color='Count',
+                              color_continuous_scale=px.colors.sequential.Plasma)
+        fig_subjects.update_layout(yaxis={'categoryorder': 'total ascending'},
+                                   margin=dict(t=50, l=25, r=25, b=25))
     else:
         fig_subjects = go.Figure()
 
-    # Publication Year Histogram
+    # Publication Year Distribution Chart
     if not filtered_data.empty:
-        fig_publication_year = px.histogram(filtered_data, x='Publication Year',
-                                            nbins=20,
-                                            title='Distribution of Publication Years',
-                                            color_discrete_sequence=[colors['primary']])
+        publication_counts = filtered_data['Publication Year'].value_counts().reset_index()
+        publication_counts.columns = ['Publication Year', 'Count']
+        fig_publication_year = px.bar(publication_counts.sort_values('Publication Year'),
+                                      x='Publication Year', y='Count',
+                                      title='Number of Titles by Publication Year',
+                                      color='Count', color_continuous_scale=px.colors.sequential.Blues)
         fig_publication_year.update_layout(margin=dict(t=50, l=25, r=25, b=25))
     else:
         fig_publication_year = go.Figure()
 
-    # Yearly Trend Line Chart
+    # Yearly Trend Area Chart
     if not filtered_data.empty:
         yearly_counts = filtered_data.groupby('Txn Calendar Year').size().reset_index(name='Counts')
-        fig_trend = px.line(yearly_counts, x='Txn Calendar Year', y='Counts',
-                            title='Number of Titles Over Transaction Years', markers=True,
-                            color_discrete_sequence=[colors['secondary']])
+        fig_trend = px.area(yearly_counts, x='Txn Calendar Year', y='Counts',
+                            title='Number of Titles Over Transaction Years',
+                            markers=True)
         fig_trend.update_layout(xaxis_title='Transaction Year', yaxis_title='Number of Titles',
                                 margin=dict(t=50, l=25, r=25, b=25))
     else:
         fig_trend = go.Figure()
 
-    # Author Rank Bar Chart (Lower Rank is Better)
+    # Author Rank Trends Heatmap
     if not filtered_data.empty:
-        top_authors_list = filtered_data['Title Author'].value_counts().index.tolist()
-        # Calculate average rank for each author
-        author_rank_avg = filtered_data.groupby('Title Author')['Rank'].mean().reset_index()
-        # Filter top N authors based on their average rank (ascending order)
-        author_rank_avg = author_rank_avg.sort_values('Rank').head(top_n_authors)
-        fig_author_rank = px.bar(author_rank_avg, x='Rank', y='Title Author', orientation='h',
-                                 title='Average Rank of Top Authors (Lower Rank is Better)', color='Rank',
-                                 color_continuous_scale=px.colors.sequential.Viridis_r)
-        fig_author_rank.update_layout(yaxis={'categoryorder': 'total ascending'},
+        # Get top N authors by the number of appearances
+        top_authors_list = filtered_data['Title Author'].value_counts().head(top_n_authors).index.tolist()
+        heatmap_data = filtered_data[filtered_data['Title Author'].isin(top_authors_list)]
+        pivot_table = heatmap_data.pivot_table(values='Rank', index='Txn Calendar Year',
+                                               columns='Title Author', aggfunc='mean')
+        if not pivot_table.empty:
+            fig_heatmap = go.Figure(data=go.Heatmap(
+                z=pivot_table.values,
+                x=pivot_table.columns,
+                y=pivot_table.index,
+                colorscale='Viridis_r',  # Reverse colorscale to reflect that lower rank is better
+                hoverongaps=False))
+            fig_heatmap.update_layout(title='Average Rank of Top Authors Over Years (Lower Rank is Better)',
+                                      xaxis_nticks=36,
                                       margin=dict(t=50, l=25, r=25, b=25))
+        else:
+            fig_heatmap = go.Figure()
     else:
-        fig_author_rank = go.Figure()
+        fig_heatmap = go.Figure()
 
-    # Rank Slope Chart (Lower Rank is Better)
+    # Rank Trend Line Chart
     if not filtered_data.empty:
+        # If no titles are selected, default to top 5 titles by average rank
         if not selected_titles:
-            # Select top 5 titles based on average rank (lower is better)
             top_titles = filtered_data.groupby('Title Native Name')['Rank'].mean().nsmallest(5).index.tolist()
-            slope_data = filtered_data[filtered_data['Title Native Name'].isin(top_titles)]
+            line_data = filtered_data[filtered_data['Title Native Name'].isin(top_titles)]
         else:
-            slope_data = filtered_data[filtered_data['Title Native Name'].isin(selected_titles)]
-        if not slope_data.empty:
-            slope_data = slope_data.sort_values(['Title Native Name', 'Txn Calendar Year'])
-            fig_slope = px.line(slope_data, x='Txn Calendar Year', y='Rank', color='Title Native Name',
-                                markers=True, title='Rank Changes Over Years (Lower Rank is Better)')
-            fig_slope.update_traces(mode='lines+markers')
+            line_data = filtered_data[filtered_data['Title Native Name'].isin(selected_titles)]
+        if not line_data.empty:
+            fig_rank_trend = px.line(line_data, x='Txn Calendar Year', y='Rank', color='Title Native Name',
+                                     title='Rank Trend of Titles Over Years (Lower Rank is Better)', markers=True)
+            fig_rank_trend.update_layout(legend=dict(orientation="h", title='Title', y=-0.2),
+                                         xaxis=dict(tickmode='linear'),
+                                         margin=dict(t=50, l=25, r=25, b=25))
             # Invert y-axis to reflect that lower rank is better
-            fig_slope.update_yaxes(autorange='reversed')
-            fig_slope.update_layout(legend=dict(orientation="h", title='Title', y=-0.2),
-                                    xaxis=dict(tickmode='linear'),
-                                    margin=dict(t=50, l=25, r=25, b=25))
+            fig_rank_trend.update_yaxes(autorange='reversed')
         else:
-            fig_slope = go.Figure()
+            fig_rank_trend = go.Figure()
     else:
-        fig_slope = go.Figure()
+        fig_rank_trend = go.Figure()
 
     return (total_titles, total_authors, total_publishers,
-            fig_media, fig_subjects, fig_publication_year, fig_trend, fig_author_rank, fig_slope)
+            fig_media, fig_subjects, fig_publication_year, fig_trend, fig_heatmap, fig_rank_trend)
 
 # Run the App
 if __name__ == '__main__':
