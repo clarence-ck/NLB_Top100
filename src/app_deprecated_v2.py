@@ -1,9 +1,8 @@
 import pandas as pd
-from dash import Dash, dcc, html, Input, Output, State
+from dash import Dash, dcc, html, Input, Output
 import dash_bootstrap_components as dbc
 import plotly.express as px
 import plotly.graph_objects as go
-from dash.exceptions import PreventUpdate
 
 # Load the dataset
 file_path = "https://github.com/clarence-ck/NLB_Top100/raw/refs/heads/main/Top_100_OD_Titles_CY2020_to_2023.xlsx"
@@ -20,9 +19,6 @@ data['Txn Calendar Year'] = data['Txn Calendar Year'].astype(int)
 data['Subject'] = data['Subject'].astype(str)
 data['Rank'] = data['Rank'].astype(int)
 data['Title Fiction Tag'] = data['Title Fiction Tag'].astype(str)
-
-# Define the years for which heatmaps will be created
-HEATMAP_YEARS = sorted(data['Txn Calendar Year'].unique())
 
 # Initialize Dash app with Bootstrap theme
 app = Dash(__name__, external_stylesheets=[dbc.themes.FLATLY])
@@ -66,66 +62,23 @@ app.index_string = '''
 </html>
 '''
 
-# Helper function to generate tooltip string with truncated titles
-def generate_ranks_str(titles, ranks, max_display=10, max_title_length=55):
-    """
-    Generates a tooltip string in the format "Title: Rank" separated by line breaks.
-    
-    Parameters:
-    - titles (list): List of book titles.
-    - ranks (list): List of corresponding ranks.
-    - max_display (int): Maximum number of title-rank pairs to display in the tooltip.
-    - max_title_length (int): Maximum number of characters for each title.
-    
-    Returns:
-    - str: Formatted tooltip string.
-    """
-    # Validate that both titles and ranks are lists
-    if not isinstance(titles, list) or not isinstance(ranks, list):
-        return "No rank data available."
-    
-    # Determine the number of pairs to process
-    num_pairs = min(len(titles), len(ranks), max_display)
-    
-    # Initialize an empty list to store "Title: Rank" strings
-    rank_entries = []
-    
-    for i in range(num_pairs):
-        title = titles[i] if pd.notnull(titles[i]) else "N/A"
-        rank = ranks[i] if pd.notnull(ranks[i]) else "N/A"
-        
-        # Truncate the title if it's too long
-        if len(title) > max_title_length:
-            title = title[:max_title_length-3] + "..."
-        
-        rank_entries.append(f"{title}: {rank}")
-    
-    # Indicate if there are additional titles or ranks not displayed
-    if len(titles) > max_display or len(ranks) > max_display:
-        rank_entries.append("...")
-    
-    # Join the entries with HTML line breaks
-    return '<br>'.join(rank_entries)
-
 # App Layout
 app.layout = dbc.Container([
     # Navigation Bar
     dbc.Navbar(
-        dbc.Container([
+        [
             html.A(
                 dbc.Row(
                     [
                         dbc.Col(
                             html.Img(
                                 src="https://fundit.fr/sites/default/files/styles/max_650x650/public/institutions/capture-decran-2023-06-30-143348.png?itok=dP4xFwqc",
-                                height="70px",  # Increased height from 40px to 70px
-                                className="d-inline-block align-bottom"
+                                height="40px"
                             )
                         ),
                         dbc.Col(
                             dbc.NavbarBrand(
-                                "Top 100 OverDrive Titles Dashboard (2020 - 2023)", 
-                                className="ms-2"
+                                "Top 100 OverDrive Titles Dashboard (2020 - 2023)", className="ml-2"
                             )
                         ),
                     ],
@@ -135,20 +88,16 @@ app.layout = dbc.Container([
                 href="#",
                 style={"textDecoration": "none"},
             ),
-        ]),
+        ],
         color=colors['primary'],
         dark=True,
-        fixed="top",
         className="mb-4",
     ),
-
-    # Spacer for fixed Navbar
-    html.Div(style={'height': '100px'}),  # Increased height to accommodate larger Navbar image
 
     # Header and Description
     dbc.Row([
         dbc.Col([
-            html.H2("Explore the Trends and Insights of the Top 100 NLB OD Titles", className="text-center mb-3"),
+            html.H2("Explore the Trends and Insights of the Top 100 NLB OD Titles", className="text-center"),
             html.P(
                 "Dive into the interactive dashboard to uncover patterns and trends in the most popular OverDrive titles from 2020 to 2023. Use the filters below to customize your view.",
                 className="text-center"
@@ -159,10 +108,9 @@ app.layout = dbc.Container([
     # Filters in a Card
     dbc.Card(
         dbc.CardBody([
-            # First Row of Filters
             dbc.Row([
                 dbc.Col([
-                    html.Label('Transaction Year(s):', className="fw-bold"),
+                    html.Label('Transaction Year(s):', style={'font-weight': 'bold'}),
                     dcc.Dropdown(
                         id='year-filter',
                         options=[{'label': str(year), 'value': year} for year in sorted(data['Txn Calendar Year'].unique())],
@@ -170,23 +118,19 @@ app.layout = dbc.Container([
                         multi=True,
                         placeholder="Select Year(s)",
                     )
-                ], md=3, sm=6, xs=12),
+                ], md=2, sm=6, xs=12),
                 dbc.Col([
-                    html.Label('Subject(s):', className="fw-bold"),
+                    html.Label('Subject(s):', style={'font-weight': 'bold'}),
                     dcc.Dropdown(
                         id='subject-filter',
                         options=[{'label': subj, 'value': subj} for subj in sorted(data['Subject'].unique())],
                         value=[],
                         multi=True,
-                        placeholder="Select Subject(s)",
-                        style={'height': 'auto', 'minHeight': '40px'},
-                        clearable=True,
-                        optionHeight=50,
+                        placeholder="Select Subject(s)"
                     )
                 ], md=4, sm=6, xs=12),
-
                 dbc.Col([
-                    html.Label('Author(s):', className="fw-bold"),
+                    html.Label('Author(s):', style={'font-weight': 'bold'}),
                     dcc.Dropdown(
                         id='author-filter',
                         options=[{'label': author, 'value': author} for author in sorted(data['Title Author'].unique())],
@@ -194,9 +138,9 @@ app.layout = dbc.Container([
                         multi=True,
                         placeholder="Select Author(s)"
                     )
-                ], md=2, sm=6, xs=12),
+                ], md=3, sm=6, xs=12),
                 dbc.Col([
-                    html.Label('Publisher(s):', className="fw-bold"),
+                    html.Label('Publisher(s):', style={'font-weight': 'bold'}),
                     dcc.Dropdown(
                         id='publisher-filter',
                         options=[{'label': publisher, 'value': publisher} for publisher in sorted(data['Title Publisher'].unique())],
@@ -204,24 +148,21 @@ app.layout = dbc.Container([
                         multi=True,
                         placeholder="Select Publisher(s)"
                     )
-                ], md=2, sm=6, xs=12),
+                ], md=3, sm=6, xs=12),
             ], className="mb-3"),
-
-            # Second Row of Filters
             dbc.Row([
                 dbc.Col([
-                    html.Label('Category:', className="fw-bold"),
+                    html.Label('Category:', style={'font-weight': 'bold'}),
                     dcc.Dropdown(
                         id='fiction-filter',
                         options=[{'label': 'Fiction', 'value': 'Yes'}, {'label': 'Non-Fiction', 'value': 'No'}],
                         value=['Yes', 'No'],
                         multi=True,
-                        placeholder="Select Category",
-                        className="mb-2"
+                        placeholder="Select Category"
                     )
                 ], md=3, sm=6, xs=12),
                 dbc.Col([
-                    html.Label('Media Type(s):', className="fw-bold"),
+                    html.Label('Media Type(s):', style={'font-weight': 'bold'}),
                     dcc.Dropdown(
                         id='media-filter',
                         options=[{'label': media, 'value': media} for media in sorted(data['Item Media'].unique())],
@@ -229,26 +170,19 @@ app.layout = dbc.Container([
                         multi=True,
                         placeholder="Select Media Type(s)"
                     )
-                ], md=4, sm=6, xs=12),
+                ], md=3, sm=6, xs=12),
                 dbc.Col([
-                    html.Label('Select Publication Start Date:',
-                        className="fw-bold",
-                        style={'display': 'block'}
-                    ),
+                    html.Label('Select Publication Start Date:', style={'font-weight': 'bold', 'display': 'block'}),
                     dcc.DatePickerSingle(
                         id='publication-start-date-filter',
                         min_date_allowed=data['Title Publication Date'].min(),
                         max_date_allowed=data['Title Publication Date'].max(),
                         date=data['Title Publication Date'].min(),
                         display_format='YYYY-MM-DD',
-                        className="mb-2"
                     ),
-                ], md=2, sm=12, xs=12),
+                ], md=3, sm=6, xs=12),
                 dbc.Col([
-                    html.Label('Select Publication End Date:',
-                        className="fw-bold",
-                        style={'display': 'block'}
-                    ),
+                    html.Label('Select Publication End Date:', style={'font-weight': 'bold', 'display': 'block'}),
                     dcc.DatePickerSingle(
                         id='publication-end-date-filter',
                         min_date_allowed=data['Title Publication Date'].min(),
@@ -256,11 +190,11 @@ app.layout = dbc.Container([
                         date=data['Title Publication Date'].max(),
                         display_format='YYYY-MM-DD',
                     ),
-                ], md=2, sm=12, xs=12)
-            ], className="mb-3"),
+                ], md=3, sm=6, xs=12),
+            ]),
         ]),
         className="mb-4",
-        style={'boxShadow': '0 4px 8px rgba(0,0,0,0.1)', 'padding': '20px', 'borderRadius': '10px'}
+        style={'box-shadow': '0 4px 8px rgba(0,0,0,0.1)', 'padding': '20px'}
     ),
 
     # KPIs
@@ -271,7 +205,7 @@ app.layout = dbc.Container([
                 html.H5("Unique Titles", className="card-title mt-2"),
                 html.H3(id='total-titles', className="card-text"),
             ])
-        ], color=colors['info'], inverse=True, className="text-center shadow-sm", style={'height': '165px', 'borderRadius': '10px'}), md=2, sm=6, xs=12),
+        ], color=colors['info'], inverse=True, className="text-center shadow-sm", style={'height': '150px'}), md=2, sm=6, xs=12),
 
         dbc.Col(dbc.Card([
             dbc.CardBody([
@@ -279,7 +213,7 @@ app.layout = dbc.Container([
                 html.H5("Unique Authors", className="card-title mt-2"),
                 html.H3(id='total-authors', className="card-text"),
             ])
-        ], color=colors['success'], inverse=True, className="text-center shadow-sm", style={'height': '165px', 'borderRadius': '10px'}), md=2, sm=6, xs=12),
+        ], color=colors['success'], inverse=True, className="text-center shadow-sm", style={'height': '150px'}), md=2, sm=6, xs=12),
 
         dbc.Col(dbc.Card([
             dbc.CardBody([
@@ -287,7 +221,7 @@ app.layout = dbc.Container([
                 html.H5("Unique Publishers", className="card-title mt-2"),
                 html.H3(id='total-publishers', className="card-text"),
             ])
-        ], color=colors['warning'], inverse=True, className="text-center shadow-sm", style={'height': '165px', 'borderRadius': '10px'}), md=2, sm=6, xs=12),
+        ], color=colors['warning'], inverse=True, className="text-center shadow-sm", style={'height': '150px'}), md=2, sm=6, xs=12),
 
         dbc.Col(dbc.Card([
             dbc.CardBody([
@@ -295,7 +229,7 @@ app.layout = dbc.Container([
                 html.H5("Earliest Publication Date", className="card-title mt-2"),
                 html.H3(id='earliest-publication', className="card-text"),
             ])
-        ], color=colors['primary'], inverse=True, className="text-center shadow-sm", style={'height': '165px', 'borderRadius': '10px'}), md=3, sm=6, xs=12),
+        ], color=colors['primary'], inverse=True, className="text-center shadow-sm", style={'height': '150px'}), md=3, sm=6, xs=12),
 
         dbc.Col(dbc.Card([
             dbc.CardBody([
@@ -303,7 +237,7 @@ app.layout = dbc.Container([
                 html.H5("Latest Publication Date", className="card-title mt-2"),
                 html.H3(id='latest-publication', className="card-text"),
             ])
-        ], color=colors['secondary'], inverse=True, className="text-center shadow-sm", style={'height': '165px', 'borderRadius': '10px'}), md=3, sm=6, xs=12),
+        ], color=colors['secondary'], inverse=True, className="text-center shadow-sm", style={'height': '150px'}), md=3, sm=6, xs=12),
     ], className="mb-4"),
 
     # Tabs for organizing content
@@ -318,9 +252,7 @@ app.layout = dbc.Container([
                         type='default',
                         children=dcc.Graph(id='media-type-donut')
                     ),
-                    md=6,
-                    sm=12,
-                    className="mb-4"
+                    md=6
                 ),
                 dbc.Col(
                     dcc.Loading(
@@ -328,25 +260,21 @@ app.layout = dbc.Container([
                         type='default',
                         children=dcc.Graph(id='category-distribution-donut')
                     ),
-                    md=6,
-                    sm=12,
-                    className="mb-4"
+                    md=6
                 ),
-            ]),
+            ], className="mb-4"),
 
             # Second Row: OverDrive Distribution Treemap
             dbc.Row([
                 dbc.Col(
                     dcc.Loading(
-                        id='loading-overdrive-distribution',
+                        id='loading-overdrive-distribution',  # New ID
                         type='default',
-                        children=dcc.Graph(id='overdrive-distribution')
+                        children=dcc.Graph(id='overdrive-distribution')  # New ID
                     ),
-                    md=12,
-                    sm=12,
-                    className="mb-4"
+                    md=12  # Full width
                 ),
-            ]),
+            ], className="mb-4"),
 
             # Third Row: Top 10 Publishers and Top 10 Authors Bar Charts
             dbc.Row([
@@ -356,9 +284,7 @@ app.layout = dbc.Container([
                         type='default',
                         children=dcc.Graph(id='top-publishers-bar')
                     ),
-                    md=6,
-                    sm=12,
-                    className="mb-4"
+                    md=6
                 ),
                 dbc.Col(
                     dcc.Loading(
@@ -366,11 +292,9 @@ app.layout = dbc.Container([
                         type='default',
                         children=dcc.Graph(id='top-authors-bar')
                     ),
-                    md=6,
-                    sm=12,
-                    className="mb-4"
+                    md=6
                 ),
-            ]),
+            ], className="mb-4"),
 
             # Fourth Row: Publication Year Stacked Bar and Custom Chart
             dbc.Row([
@@ -380,9 +304,7 @@ app.layout = dbc.Container([
                         type='default',
                         children=dcc.Graph(id='publication-year-stacked-bar')
                     ),
-                    md=6,
-                    sm=12,
-                    className="mb-4"
+                    md=6
                 ),
                 dbc.Col(
                     dcc.Loading(
@@ -390,19 +312,16 @@ app.layout = dbc.Container([
                         type='default',
                         children=dcc.Graph(id='custom-chart')
                     ),
-                    md=6,
-                    sm=12,
-                    className="mb-4"
+                    md=6
                 ),
-            ]),
+            ], className="mb-4"),
         ]),
 
         # Rank Trend Analysis Tab
         dbc.Tab(label='Rank Trend Analysis', tab_id='tab-detailed', children=[
-            # First Row: Top Authors Slider
             dbc.Row([
                 dbc.Col([
-                    html.Label('Select Top N Authors:', className="fw-bold"),
+                    html.Label('Select Top N Authors:', style={'font-weight': 'bold'}),
                     dcc.Slider(
                         id='top-authors-slider',
                         min=5,
@@ -411,68 +330,57 @@ app.layout = dbc.Container([
                         value=10,
                         marks={i: str(i) for i in range(5, 21, 5)},
                         tooltip={"placement": "bottom", "always_visible": True},
-                        className="mb-4"
                     ),
-                ], md=12, sm=12, xs=12),
-            ], className="mb-4"),
-
-            # Second Row: Heatmaps for Each Year
-            dbc.Row([
-                dbc.Col([
                     dcc.Loading(
-                        id=f'loading-author-heatmap-{year}',
+                        id='loading-author-heatmap',
                         type='default',
-                        children=dcc.Graph(id=f'author-heatmap-{year}')
-                    )
-                ], md=3, sm=6, xs=12) for year in HEATMAP_YEARS
+                        children=dcc.Graph(id='author-heatmap')
+                    ),
+                ], md=12),
             ], className="mb-4"),
 
             # Explanation for Average Rank of Top Authors
             dbc.Row([
                 dbc.Col([
                     html.P(
-                        "The heatmaps above display the average rank of the top authors across the years. "
-                        "The average rank is calculated by taking the mean rank of each author's book titles in that year. "
-                        "A lower rank indicates better popularity.",
-                        className="text-muted"
+                        "The heatmap above displays the average rank of the top authors over the years. "
+                        "The average rank is calculated by taking the mean rank of each author's titles for each transaction year. "
+                        "A lower rank indicates better performance."
                     )
-                ], md=12, sm=12, xs=12),
+                ], md=12),
             ], className="mb-2"),
 
             # Rank Trend Line Chart
             dbc.Row([
                 dbc.Col([
-                    html.Label('Select Title(s):', className="fw-bold"),
+                    html.Label('Select Title(s):', style={'font-weight': 'bold'}),
                     dcc.Dropdown(
                         id='title-filter',
                         options=[{'label': title, 'value': title} for title in sorted(data['Title Native Name'].unique())],
                         value=[],
                         multi=True,
                         placeholder="Select Title(s)",
-                        className="mb-4"
                     ),
                     dcc.Loading(
                         id='loading-rank-trend-line',
                         type='default',
                         children=dcc.Graph(id='rank-trend-line')
                     ),
-                ], md=12, sm=12, xs=12),
+                ], md=12),
             ]),
         ]),
     ], id='tabs', active_tab='tab-overview'),
 
     # Footer
     html.Footer(
-        dbc.Container([
+        [
             html.Hr(),
-            html.P("© 2024 | Dashboard by Clarence Sai", className="text-center mb-0"),
-        ], fluid=True),
-        style={'padding': '20px 0', 'backgroundColor': colors['light']}
+            html.P("© 2024 | Dashboard by Clarence Sai", className="text-center"),
+        ]
     )
 ], fluid=True, style={'backgroundColor': colors['background']})
 
 # Helper functions to create figures
-
 def create_media_type_donut_chart(filtered_data):
     if not filtered_data.empty:
         media_counts = filtered_data['Item Media'].value_counts().reset_index()
@@ -513,32 +421,22 @@ def create_category_distribution_donut_chart(filtered_data):
 def create_overdrive_distribution_treemap(filtered_data):
     if not filtered_data.empty:
         # Prepare the hierarchical data
-        treemap_data = filtered_data.groupby(['Title Publisher', 'Title Author']).size().reset_index(name='Count')
+        treemap_data = filtered_data.groupby(['Title Publisher', 'Title Author', 'Subject']).size().reset_index(name='Count')
 
         fig = px.treemap(
             treemap_data,
-            path=['Title Publisher', 'Title Author'],
+            path=['Title Publisher', 'Title Author', 'Subject'],
             values='Count',
             title='OverDrive Distribution',
             color='Count',
             color_continuous_scale='Viridis',
             hover_data={'Count': True},
-            labels={'Title Publisher': 'Publisher', 'Title Author': 'Author'}
+            labels={'Title Publisher': 'Publisher', 'Title Author': 'Author', 'Subject': 'Subject'}
         )
         fig.update_traces(
-            hovertemplate='<b>Publisher: %{parent}</b><br><b>Author: %{label}</b><br>Count: %{value}<extra></extra>',
+            hovertemplate='<b>%{label}</b><br>Count: %{value}<extra></extra>'
         )
-        fig.update_layout(
-            margin=dict(t=50, l=25, r=25, b=25),
-            title={
-                'text': "OverDrive Distribution",
-                'y':0.95,
-                'x':0.5,
-                'xanchor': 'center',
-                'yanchor': 'top',
-                'font': {'size': 20}
-            }
-        )
+        fig.update_layout(margin=dict(t=50, l=25, r=25, b=25))
         return fig
     else:
         fig = go.Figure()
@@ -586,12 +484,12 @@ def create_transaction_year_media_type_chart(filtered_data):
             }
         )
         
-        # Update the x-axis to show only the relevant years without sub-units
+        # Update the x-axis to show only the years 2020 to 2023 without sub-units
         fig.update_xaxes(
             tickmode='linear',
-            tick0=HEATMAP_YEARS[0],
+            tick0=2020,
             dtick=1,
-            range=[HEATMAP_YEARS[0] - 0.5, HEATMAP_YEARS[-1] + 0.5],  # Slightly beyond to ensure full bars are visible
+            range=[2019.5, 2023.5],  # Slightly beyond to ensure full bars are visible
             title='Transaction Year'
         )
         
@@ -686,101 +584,44 @@ def create_top_authors_bar_chart(filtered_data):
         )
         return fig
 
-def create_author_heatmap(filtered_data, year, top_authors=None):
-    """
-    Creates a heatmap for average ranks of top authors in a specific year.
-    
-    Parameters:
-    - filtered_data (DataFrame): The filtered dataset based on user selections.
-    - year (int): The specific year for which the heatmap is created.
-    - top_authors (list, optional): List of top N authors to include in the heatmap.
-    
-    Returns:
-    - Figure: A Plotly Heatmap figure.
-    """
-    # Filter data for the specific year
-    year_data = filtered_data[filtered_data['Txn Calendar Year'] == year]
-    
-    if top_authors:
-        year_data = year_data[filtered_data['Title Author'].isin(top_authors)]
-    
-    if not year_data.empty:
-        # Aggregate data by 'Title Author'
-        pivot_table = year_data.groupby('Title Author').agg(
-            Average_Rank=('Rank', 'mean'),
-            Ranks=('Rank', list),
-            Titles=('Title Native Name', list)
-        ).reset_index()
-        
-        # Sort authors by average rank (ascending)
-        pivot_table_sorted = pivot_table.sort_values(by='Average_Rank')
-        
-        # Create the tooltip string with truncated titles
-        pivot_table_sorted['Ranks_str'] = pivot_table_sorted.apply(
-            lambda row: generate_ranks_str(row['Titles'], row['Ranks']),
-            axis=1
-        )
-        
-        # Reshape 'Ranks_str' to a 2D list for 'text' parameter
-        text_reshaped = pivot_table_sorted['Ranks_str'].apply(lambda x: [x]).tolist()
-        
-        # Create Heatmap using go.Heatmap with 'text'
-        fig = go.Figure(
-            data=go.Heatmap(
-                z=pivot_table_sorted['Average_Rank'].values.reshape(-1, 1),  # Single column
-                x=['Average Rank'],  # Single label
-                y=pivot_table_sorted['Title Author'],
-                colorscale='Viridis',      # Use standard Viridis
-                reversescale=True,        # Do not reverse the colorscale
-                colorbar=dict(title="Avg Rank"),
-                hoverongaps=False,
-                zmin=pivot_table_sorted['Average_Rank'].min(),
-                zmax=pivot_table_sorted['Average_Rank'].max(),
-                showscale=True,
-                text=text_reshaped,  # Use 'text' instead of 'customdata'
-                hovertemplate=
-                    '<b>%{y}</b><br>' +
-                    'Average Rank: %{z:.1f}<br>' +  # Format to one decimal place
-                    'Title-Rank:<br>' +              # Changed "Ranks:" to "Title-Rank:"
-                    '%{text}<br>' +
-                    '<extra></extra>',
-                hoverlabel=dict(
-                    align='left',          # Align text to the left for better readability
-                    bgcolor="rgba(255, 255, 255, 0.9)",  # Semi-transparent white background
-                    font=dict(
-                        size=12,           # Adjust font size as needed
-                        color="black",     # Text color
-                        family="Arial"     # Font family
-                    )
-                )
+def create_author_heatmap(filtered_data, top_n_authors):
+    if not filtered_data.empty:
+        top_authors_list = filtered_data['Title Author'].value_counts().head(top_n_authors).index.tolist()
+        heatmap_data = filtered_data[filtered_data['Title Author'].isin(top_authors_list)]
+        pivot_table = heatmap_data.pivot_table(values='Rank', index='Txn Calendar Year',
+                                               columns='Title Author', aggfunc='mean')
+        if not pivot_table.empty:
+            fig = px.imshow(pivot_table.T, aspect='auto',
+                            color_continuous_scale='Viridis_r',
+                            title='Average Rank of Top Authors Over Years (Lower Rank is Better)')
+            fig.update_layout(
+                xaxis_title='Transaction Calendar Year',  # Updated X-axis label
+                yaxis_title='Author',                      # Added Y-axis label for clarity
+                xaxis=dict(
+                    tickmode='linear',
+                    tick0=2020,
+                    dtick=1,
+                    range=[2019.5, 2023.5],  
+                ),
+                margin=dict(t=100, l=150, r=25, b=50)     # Adjusted margins for better layout
             )
-        )
-        
-        # Update layout with increased top margin and normal y-axis orientation
-        fig.update_layout(
-            title=f'Average Rank of Top Authors in {year}',
-            xaxis_title='',
-            yaxis_title='Author',
-            yaxis=dict(autorange='reversed'),  # Do not reverse the y-axis; highest rank at top
-            xaxis=dict(showticklabels=False),  # Hide x-axis labels
-            margin=dict(t=150, l=200, r=50, b=50),  # Increased top margin
-            template='plotly_white',  # Use a white template for better contrast
-            hovermode='closest'  # Ensures that hover events are accurately captured
-        )
-        
-        return fig
+            return fig
+        else:
+            fig = go.Figure()
+            fig.update_layout(
+                title="Average Rank of Top Authors Over Years",
+                annotations=[dict(text="No data available", x=0.5, y=0.5, showarrow=False)]
+            )
+            return fig
     else:
-        # No data available for the specific year
         fig = go.Figure()
         fig.update_layout(
-            title=f"Average Rank of Top Authors in {year}",
-            annotations=[dict(text="No data available", x=0.5, y=0.5, showarrow=False)],
-            xaxis=dict(visible=False),
-            yaxis=dict(visible=False),
-            template='plotly_white'
+            title="Average Rank of Top Authors Over Years",
+            annotations=[dict(text="No data available", x=0.5, y=0.5, showarrow=False)]
         )
         return fig
 
+# Updated Rank Trend Line Chart Function
 def create_rank_trend_line_chart(filtered_data, selected_titles):
     if not filtered_data.empty:
         if selected_titles:
@@ -810,9 +651,9 @@ def create_rank_trend_line_chart(filtered_data, selected_titles):
                     ),
                     xaxis=dict(
                         tickmode='linear',
-                        tick0=HEATMAP_YEARS[0],
+                        tick0=2020,
                         dtick=1,
-                        range=[HEATMAP_YEARS[0], HEATMAP_YEARS[-1]],  # Adjusted to dynamic range
+                        range=[2020, 2023],  # Added padding to x-axis
                         title='Transaction Calendar Year'
                     ),
                     yaxis=dict(
@@ -883,28 +724,24 @@ def create_rank_trend_line_chart(filtered_data, selected_titles):
         Output('total-titles', 'children'),
         Output('total-authors', 'children'),
         Output('total-publishers', 'children'),
-        Output('earliest-publication', 'children'),
-        Output('latest-publication', 'children'),
+        Output('earliest-publication', 'children'),   # New Output
+        Output('latest-publication', 'children'),     # New Output
         Output('media-type-donut', 'figure'),
         Output('category-distribution-donut', 'figure'),
-        Output('overdrive-distribution', 'figure'),
-        Output('top-publishers-bar', 'figure'),
-        Output('top-authors-bar', 'figure'),
+        Output('overdrive-distribution', 'figure'),   # New Output
+        Output('top-publishers-bar', 'figure'),       # New Output
+        Output('top-authors-bar', 'figure'),          # New Output
         Output('publication-year-stacked-bar', 'figure'),
         Output('custom-chart', 'figure'),
-        # Outputs for each year's heatmap
-        Output('author-heatmap-2020', 'figure'),
-        Output('author-heatmap-2021', 'figure'),
-        Output('author-heatmap-2022', 'figure'),
-        Output('author-heatmap-2023', 'figure'),
+        Output('author-heatmap', 'figure'),
         Output('rank-trend-line', 'figure'),
     ],
     [
         Input('year-filter', 'value'),
         Input('subject-filter', 'value'),
         Input('media-filter', 'value'),
-        Input('publication-start-date-filter', 'date'),
-        Input('publication-end-date-filter', 'date'),
+        Input('publication-start-date-filter', 'date'),  # New Input
+        Input('publication-end-date-filter', 'date'),    # New Input
         Input('top-authors-slider', 'value'),
         Input('title-filter', 'value'),
         Input('author-filter', 'value'),
@@ -958,25 +795,13 @@ def update_charts(selected_years, selected_subjects, selected_media,
     # Create charts using helper functions
     fig_media_donut = create_media_type_donut_chart(filtered_data)
     fig_category_donut = create_category_distribution_donut_chart(filtered_data)
-    fig_overdrive_distribution = create_overdrive_distribution_treemap(filtered_data)
-    fig_top_publishers = create_top_publishers_bar_chart(filtered_data)
-    fig_top_authors = create_top_authors_bar_chart(filtered_data)
+    fig_overdrive_distribution = create_overdrive_distribution_treemap(filtered_data)  # New
+    fig_top_publishers = create_top_publishers_bar_chart(filtered_data)               # New
+    fig_top_authors = create_top_authors_bar_chart(filtered_data)                     # New
     fig_publication_year_stacked_bar = create_publication_year_stacked_bar_chart(filtered_data)
-    fig_custom_chart = create_transaction_year_media_type_chart(filtered_data)
+    fig_custom_chart = create_transaction_year_media_type_chart(filtered_data)  # Custom chart
 
-    # Determine Top N Authors
-    if top_n_authors and top_n_authors > 0:
-        top_authors = filtered_data['Title Author'].value_counts().nlargest(top_n_authors).index.tolist()
-    else:
-        top_authors = []
-
-    # Create heatmaps for each year using Top N Authors
-    heatmap_figs = []
-    for year in HEATMAP_YEARS:
-        fig = create_author_heatmap(filtered_data, year, top_authors)
-        heatmap_figs.append(fig)
-
-    # Create Rank Trend Line Chart
+    fig_heatmap = create_author_heatmap(filtered_data, top_n_authors)
     fig_rank_trend = create_rank_trend_line_chart(filtered_data, selected_titles)
 
     return (
@@ -987,16 +812,12 @@ def update_charts(selected_years, selected_subjects, selected_media,
         latest_publication,     
         fig_media_donut,
         fig_category_donut,
-        fig_overdrive_distribution,
-        fig_top_publishers,
-        fig_top_authors,
+        fig_overdrive_distribution,  # New
+        fig_top_publishers,          # New
+        fig_top_authors,             # New
         fig_publication_year_stacked_bar,
         fig_custom_chart,
-        # Heatmap figures
-        heatmap_figs[0] if len(heatmap_figs) > 0 else go.Figure(),
-        heatmap_figs[1] if len(heatmap_figs) > 1 else go.Figure(),
-        heatmap_figs[2] if len(heatmap_figs) > 2 else go.Figure(),
-        heatmap_figs[3] if len(heatmap_figs) > 3 else go.Figure(),
+        fig_heatmap,
         fig_rank_trend
     )
 
