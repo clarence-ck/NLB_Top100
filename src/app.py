@@ -3,7 +3,6 @@ from dash import Dash, dcc, html, Input, Output, State
 import dash_bootstrap_components as dbc
 import plotly.express as px
 import plotly.graph_objects as go
-from dash.exceptions import PreventUpdate
 
 # Load the dataset
 file_path = "https://github.com/clarence-ck/NLB_Top100/raw/refs/heads/main/Top_100_OD_Titles_CY2020_to_2023.xlsx"
