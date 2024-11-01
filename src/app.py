@@ -1,19 +1,16 @@
 import pandas as pd
-from dash import Dash, dcc, html, Input, Output, State, callback_context
+from dash import Dash, dcc, html, Input, Output
 import dash_bootstrap_components as dbc
 import plotly.express as px
 import plotly.graph_objects as go
-import datetime
 
 # Load the dataset
-file_path = "https://github.com/clarence-ck/NLB_Top100/raw/refs/heads/main/Top_100_OD_Titles_CY2020_to_2023.xlsx"
+file_path = "C:\\Users\\Clarence\\Downloads\\NLB_Top100\\Top_100_OD_Titles_CY2020_to_2023.xlsx"
 data = pd.read_excel(file_path, sheet_name='Sheet1')
 
 # Data Preprocessing
 data['Title Publication Date'] = pd.to_datetime(data['Title Publication Date'], errors='coerce')
 data['Publication Year'] = data['Title Publication Date'].dt.year
-
-# Convert other columns to appropriate data types
 data['Item Media'] = data['Item Media'].str.title()
 data['Title Native Name'] = data['Title Native Name'].astype(str)
 data['Title Author'] = data['Title Author'].astype(str)
@@ -23,29 +20,47 @@ data['Subject'] = data['Subject'].astype(str)
 data['Rank'] = data['Rank'].astype(int)
 data['Title Fiction Tag'] = data['Title Fiction Tag'].astype(str)
 
-# KPI Preprocessing
-total_titles = data['Title Native Name'].nunique()
-total_authors = data['Title Author'].nunique()
-total_publishers = data['Title Publisher'].nunique()
-earliest_publication = data['Title Publication Date'].min().strftime('%Y-%m-%d')
-latest_publication = data['Title Publication Date'].max().strftime('%Y-%m-%d')
-
-# Initialize Dash app with a modern Bootstrap theme
+# Initialize Dash app with Bootstrap theme
 app = Dash(__name__, external_stylesheets=[dbc.themes.FLATLY])
 server = app.server  # For deployment
 
-# Color Palette (Color-blind friendly)
+# Define colors
 colors = {
-    'background': '#FFFFFF',
-    'text': '#2F3E46',
-    'primary': '#377eb8',
-    'secondary': '#4daf4a',
-    'accent': '#e41a1c',
-    'info': '#984ea3',
-    'warning': '#ff7f00',
-    'success': '#4daf4a',
-    'danger': '#a65628',
+    'background': '#F8F9FA',
+    'text': '#343A40',
+    'primary': '#1E90FF',        # DodgerBlue
+    'secondary': '#20C997',      # SeaGreen
+    'accent': '#FF6B6B',         # Light Red
+    'info': '#6F42C1',           # Purple
+    'warning': '#FFC107',        # Amber
+    'success': '#28A745',        # Green
+    'danger': '#DC3545',         # Red
+    'light': '#E9ECEF',
+    'dark': '#343A40',
 }
+
+# Include Bootstrap Icons
+app.index_string = '''
+<!DOCTYPE html>
+<html>
+    <head>
+        {%metas%}
+        <title>{%title%}</title>
+        {%favicon%}
+        {%css%}
+        <!-- Bootstrap Icons CDN -->
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    </head>
+    <body>
+        {%app_entry%}
+        <footer>
+            {%config%}
+            {%scripts%}
+            {%renderer%}
+        </footer>
+    </body>
+</html>
+'''
 
 # App Layout
 app.layout = dbc.Container([
@@ -82,14 +97,15 @@ app.layout = dbc.Container([
     # Header and Description
     dbc.Row([
         dbc.Col([
-            html.H2("Explore the Trends and Insights of the Top 100 NLB OD Titles"),
+            html.H2("Explore the Trends and Insights of the Top 100 NLB OD Titles", className="text-center"),
             html.P(
-                "Dive into the interactive dashboard to uncover patterns and trends in the most popular OverDrive titles from 2020 to 2023. Use the filters below to customize your view."
+                "Dive into the interactive dashboard to uncover patterns and trends in the most popular OverDrive titles from 2020 to 2023. Use the filters below to customize your view.",
+                className="text-center"
             ),
         ], width=12)
     ], className="mb-4"),
 
-    # Filters
+    # Filters in a Card
     dbc.Card(
         dbc.CardBody([
             dbc.Row([
@@ -102,8 +118,7 @@ app.layout = dbc.Container([
                         multi=True,
                         placeholder="Select Year(s)",
                     )
-                ], md=2),
-
+                ], md=2, sm=6, xs=12),
                 dbc.Col([
                     html.Label('Subject(s):', style={'font-weight': 'bold'}),
                     dcc.Dropdown(
@@ -111,11 +126,9 @@ app.layout = dbc.Container([
                         options=[{'label': subj, 'value': subj} for subj in sorted(data['Subject'].unique())],
                         value=[],
                         multi=True,
-                        placeholder="Select Subject(s)",
-                        style={'width': '100%'}
+                        placeholder="Select Subject(s)"
                     )
-                ], md=4),
-
+                ], md=4, sm=6, xs=12),
                 dbc.Col([
                     html.Label('Author(s):', style={'font-weight': 'bold'}),
                     dcc.Dropdown(
@@ -123,11 +136,9 @@ app.layout = dbc.Container([
                         options=[{'label': author, 'value': author} for author in sorted(data['Title Author'].unique())],
                         value=[],
                         multi=True,
-                        placeholder="Select Author(s)",
-                        style={'width': '100%'}
+                        placeholder="Select Author(s)"
                     )
-                ], md=3),
-
+                ], md=3, sm=6, xs=12),
                 dbc.Col([
                     html.Label('Publisher(s):', style={'font-weight': 'bold'}),
                     dcc.Dropdown(
@@ -135,28 +146,21 @@ app.layout = dbc.Container([
                         options=[{'label': publisher, 'value': publisher} for publisher in sorted(data['Title Publisher'].unique())],
                         value=[],
                         multi=True,
-                        placeholder="Select Publisher(s)",
-                        style={'width': '100%'}
+                        placeholder="Select Publisher(s)"
                     )
-                ], md=3),
+                ], md=3, sm=6, xs=12),
             ], className="mb-3"),
-
             dbc.Row([
                 dbc.Col([
                     html.Label('Category:', style={'font-weight': 'bold'}),
                     dcc.Dropdown(
                         id='fiction-filter',
-                        options=[
-                            {'label': 'Fiction', 'value': 'Yes'},
-                            {'label': 'Non-Fiction', 'value': 'No'}
-                        ],
-                        value=['Yes', 'No'],  # Default to both options selected
+                        options=[{'label': 'Fiction', 'value': 'Yes'}, {'label': 'Non-Fiction', 'value': 'No'}],
+                        value=['Yes', 'No'],
                         multi=True,
-                        placeholder="Select Category",
-                        style={'width': '100%'}
+                        placeholder="Select Category"
                     )
-                ], md=3),
-
+                ], md=3, sm=6, xs=12),
                 dbc.Col([
                     html.Label('Media Type(s):', style={'font-weight': 'bold'}),
                     dcc.Dropdown(
@@ -164,63 +168,83 @@ app.layout = dbc.Container([
                         options=[{'label': media, 'value': media} for media in sorted(data['Item Media'].unique())],
                         value=[],
                         multi=True,
-                        placeholder="Select Media Type(s)",
-                        style={'width': '100%'}
+                        placeholder="Select Media Type(s)"
                     )
-                ], md=3),
-
+                ], md=3, sm=6, xs=12),
                 dbc.Col([
-                    html.Label('Publication Date Range:', style={'font-weight': 'bold'}),
-                    dcc.RangeSlider(
-                        id='publication-date-slider',
-                        min=data['Publication Year'].min(),
-                        max=data['Publication Year'].max(),
-                        value=[data['Publication Year'].min(), data['Publication Year'].max()],
-                        marks={year: str(year) for year in range(data['Publication Year'].min(), data['Publication Year'].max()+1, 2)},
-                        tooltip={"placement": "bottom", "always_visible": False},
-                    )
-                ], md=6),
+                    html.Label('Select Publication Start Date:', style={'font-weight': 'bold', 'display': 'block'}),
+                    dcc.DatePickerSingle(
+                        id='publication-start-date-filter',
+                        min_date_allowed=data['Title Publication Date'].min(),
+                        max_date_allowed=data['Title Publication Date'].max(),
+                        date=data['Title Publication Date'].min(),
+                        display_format='YYYY-MM-DD',
+                    ),
+                ], md=3, sm=6, xs=12),
+                dbc.Col([
+                    html.Label('Select Publication End Date:', style={'font-weight': 'bold', 'display': 'block'}),
+                    dcc.DatePickerSingle(
+                        id='publication-end-date-filter',
+                        min_date_allowed=data['Title Publication Date'].min(),
+                        max_date_allowed=data['Title Publication Date'].max(),
+                        date=data['Title Publication Date'].max(),
+                        display_format='YYYY-MM-DD',
+                    ),
+                ], md=3, sm=6, xs=12),
             ]),
         ]),
         className="mb-4",
+        style={'box-shadow': '0 4px 8px rgba(0,0,0,0.1)', 'padding': '20px'}
     ),
 
-    # KPI Cards
+    # KPIs
     dbc.Row([
         dbc.Col(dbc.Card([
             dbc.CardBody([
-                html.H5("Unique Titles", className="card-title"),
+                html.I(className="bi bi-book", style={'font-size': '2rem', 'color': 'white'}),
+                html.H5("Unique Titles", className="card-title mt-2"),
                 html.H3(id='total-titles', className="card-text"),
             ])
-        ], color=colors['info'], inverse=True), md=3),
+        ], color=colors['info'], inverse=True, className="text-center shadow-sm", style={'height': '150px'}), md=2, sm=6, xs=12),
 
         dbc.Col(dbc.Card([
             dbc.CardBody([
-                html.H5("Unique Authors", className="card-title"),
+                html.I(className="bi bi-person", style={'font-size': '2rem', 'color': 'white'}),
+                html.H5("Unique Authors", className="card-title mt-2"),
                 html.H3(id='total-authors', className="card-text"),
             ])
-        ], color=colors['success'], inverse=True), md=3),
+        ], color=colors['success'], inverse=True, className="text-center shadow-sm", style={'height': '150px'}), md=2, sm=6, xs=12),
 
         dbc.Col(dbc.Card([
             dbc.CardBody([
-                html.H5("Unique Publishers", className="card-title"),
+                html.I(className="bi bi-people", style={'font-size': '2rem', 'color': 'white'}),
+                html.H5("Unique Publishers", className="card-title mt-2"),
                 html.H3(id='total-publishers', className="card-text"),
             ])
-        ], color=colors['warning'], inverse=True), md=3),
+        ], color=colors['warning'], inverse=True, className="text-center shadow-sm", style={'height': '150px'}), md=2, sm=6, xs=12),
 
         dbc.Col(dbc.Card([
             dbc.CardBody([
-                html.H5("Time Span", className="card-title"),
-                html.H3(id='time-span', className="card-text"),
+                html.I(className="bi bi-calendar", style={'font-size': '2rem', 'color': 'white'}),
+                html.H5("Earliest Publication Date", className="card-title mt-2"),
+                html.H3(id='earliest-publication', className="card-text"),
             ])
-        ], color=colors['danger'], inverse=True), md=3),
-    ], className="mb-5"),
+        ], color=colors['primary'], inverse=True, className="text-center shadow-sm", style={'height': '150px'}), md=3, sm=6, xs=12),
+
+        dbc.Col(dbc.Card([
+            dbc.CardBody([
+                html.I(className="bi bi-calendar-check", style={'font-size': '2rem', 'color': 'white'}),
+                html.H5("Latest Publication Date", className="card-title mt-2"),
+                html.H3(id='latest-publication', className="card-text"),
+            ])
+        ], color=colors['secondary'], inverse=True, className="text-center shadow-sm", style={'height': '150px'}), md=3, sm=6, xs=12),
+    ], className="mb-4"),
 
     # Tabs for organizing content
     dbc.Tabs([
         # Overview Tab
         dbc.Tab(label='Overview', tab_id='tab-overview', children=[
-            # First Row
+            # First Row: Media Type and Category Donut Charts
             dbc.Row([
                 dbc.Col(
                     dcc.Loading(
@@ -240,11 +264,23 @@ app.layout = dbc.Container([
                 ),
             ], className="mb-4"),
 
-            # Second Row
+            # Second Row: OverDrive Distribution Treemap
             dbc.Row([
                 dbc.Col(
                     dcc.Loading(
-                        id='loading-top-publishers-bar',
+                        id='loading-overdrive-distribution',  # New ID
+                        type='default',
+                        children=dcc.Graph(id='overdrive-distribution')  # New ID
+                    ),
+                    md=12  # Full width
+                ),
+            ], className="mb-4"),
+
+            # Third Row: Top 10 Publishers and Top 10 Authors Bar Charts
+            dbc.Row([
+                dbc.Col(
+                    dcc.Loading(
+                        id='loading-top-publishers',
                         type='default',
                         children=dcc.Graph(id='top-publishers-bar')
                     ),
@@ -252,7 +288,7 @@ app.layout = dbc.Container([
                 ),
                 dbc.Col(
                     dcc.Loading(
-                        id='loading-top-authors-bar',
+                        id='loading-top-authors',
                         type='default',
                         children=dcc.Graph(id='top-authors-bar')
                     ),
@@ -260,7 +296,7 @@ app.layout = dbc.Container([
                 ),
             ], className="mb-4"),
 
-            # Third Row
+            # Fourth Row: Publication Year Stacked Bar and Custom Chart
             dbc.Row([
                 dbc.Col(
                     dcc.Loading(
@@ -281,8 +317,8 @@ app.layout = dbc.Container([
             ], className="mb-4"),
         ]),
 
-        # Detailed Analysis Tab
-        dbc.Tab(label='Detailed Analysis', tab_id='tab-detailed', children=[
+        # Rank Trend Analysis Tab
+        dbc.Tab(label='Rank Trend Analysis', tab_id='tab-detailed', children=[
             dbc.Row([
                 dbc.Col([
                     html.Label('Select Top N Authors:', style={'font-weight': 'bold'}),
@@ -302,6 +338,19 @@ app.layout = dbc.Container([
                     ),
                 ], md=12),
             ], className="mb-4"),
+
+            # Explanation for Average Rank of Top Authors
+            dbc.Row([
+                dbc.Col([
+                    html.P(
+                        "The heatmap above displays the average rank of the top authors over the years. "
+                        "The average rank is calculated by taking the mean rank of each author's titles for each transaction year. "
+                        "A lower rank indicates better performance."
+                    )
+                ], md=12),
+            ], className="mb-2"),
+
+            # Rank Trend Line Chart
             dbc.Row([
                 dbc.Col([
                     html.Label('Select Title(s):', style={'font-weight': 'bold'}),
@@ -343,7 +392,12 @@ def create_media_type_donut_chart(filtered_data):
         fig.update_layout(margin=dict(t=50, l=25, r=25, b=25))
         return fig
     else:
-        return go.Figure()
+        fig = go.Figure()
+        fig.update_layout(
+            title="Media Type Distribution",
+            annotations=[dict(text="No data available", x=0.5, y=0.5, showarrow=False)]
+        )
+        return fig
 
 def create_category_distribution_donut_chart(filtered_data):
     if not filtered_data.empty:
@@ -357,33 +411,40 @@ def create_category_distribution_donut_chart(filtered_data):
         fig.update_layout(margin=dict(t=50, l=25, r=25, b=25))
         return fig
     else:
-        return go.Figure()
+        fig = go.Figure()
+        fig.update_layout(
+            title="Category Distribution",
+            annotations=[dict(text="No data available", x=0.5, y=0.5, showarrow=False)]
+        )
+        return fig
 
-def create_top_publishers_bar_chart(filtered_data):
+def create_overdrive_distribution_treemap(filtered_data):
     if not filtered_data.empty:
-        top_publishers = filtered_data['Title Publisher'].value_counts().head(10).reset_index()
-        top_publishers.columns = ['Publisher', 'Count']
-        fig = px.bar(top_publishers, x='Count', y='Publisher', orientation='h',
-                     title='Top 10 Publishers',
-                     color='Count', color_continuous_scale=px.colors.sequential.Viridis)
-        fig.update_layout(yaxis={'categoryorder': 'total ascending'},
-                          margin=dict(t=50, l=25, r=25, b=25))
+        # Prepare the hierarchical data
+        treemap_data = filtered_data.groupby(['Title Publisher', 'Title Author', 'Subject']).size().reset_index(name='Count')
+
+        fig = px.treemap(
+            treemap_data,
+            path=['Title Publisher', 'Title Author', 'Subject'],
+            values='Count',
+            title='OverDrive Distribution',
+            color='Count',
+            color_continuous_scale='Viridis',
+            hover_data={'Count': True},
+            labels={'Title Publisher': 'Publisher', 'Title Author': 'Author', 'Subject': 'Subject'}
+        )
+        fig.update_traces(
+            hovertemplate='<b>%{label}</b><br>Count: %{value}<extra></extra>'
+        )
+        fig.update_layout(margin=dict(t=50, l=25, r=25, b=25))
         return fig
     else:
-        return go.Figure()
-
-def create_top_authors_bar_chart(filtered_data):
-    if not filtered_data.empty:
-        top_authors = filtered_data['Title Author'].value_counts().head(10).reset_index()
-        top_authors.columns = ['Author', 'Count']
-        fig = px.bar(top_authors, x='Count', y='Author', orientation='h',
-                     title='Top 10 Authors',
-                     color='Count', color_continuous_scale=px.colors.sequential.Plasma)
-        fig.update_layout(yaxis={'categoryorder': 'total ascending'},
-                          margin=dict(t=50, l=25, r=25, b=25))
+        fig = go.Figure()
+        fig.update_layout(
+            title="OverDrive Distribution",
+            annotations=[dict(text="No data available", x=0.5, y=0.5, showarrow=False)]
+        )
         return fig
-    else:
-        return go.Figure()
 
 def create_publication_year_stacked_bar_chart(filtered_data):
     if not filtered_data.empty:
@@ -396,18 +457,132 @@ def create_publication_year_stacked_bar_chart(filtered_data):
         fig.update_layout(margin=dict(t=50, l=25, r=25, b=25))
         return fig
     else:
-        return go.Figure()
+        fig = go.Figure()
+        fig.update_layout(
+            title="Number of Titles by Publication Year",
+            annotations=[dict(text="No data available", x=0.5, y=0.5, showarrow=False)]
+        )
+        return fig
 
 def create_transaction_year_media_type_chart(filtered_data):
     if not filtered_data.empty:
+        # Group data by Transaction Year and Item Media, then count the occurrences
         counts = filtered_data.groupby(['Txn Calendar Year', 'Item Media']).size().reset_index(name='Count')
-        fig = px.bar(counts, x='Txn Calendar Year', y='Count', color='Item Media',
-                     title='Number of Titles by Transaction Year and Media Type',
-                     color_discrete_sequence=px.colors.qualitative.Pastel)
-        fig.update_layout(margin=dict(t=50, l=25, r=25, b=25))
+        
+        # Create the bar chart
+        fig = px.bar(
+            counts,
+            x='Txn Calendar Year',
+            y='Count',
+            color='Item Media',
+            title='Number of Titles by Transaction Year and Media Type',
+            color_discrete_sequence=px.colors.qualitative.Pastel,
+            labels={
+                'Txn Calendar Year': 'Transaction Year',
+                'Count': 'Number of Titles',
+                'Item Media': 'Media Type'
+            }
+        )
+        
+        # Update the x-axis to show only the years 2020 to 2023 without sub-units
+        fig.update_xaxes(
+            tickmode='linear',
+            tick0=2020,
+            dtick=1,
+            range=[2019.5, 2023.5],  # Slightly beyond to ensure full bars are visible
+            title='Transaction Year'
+        )
+        
+        # Update the y-axis title
+        fig.update_yaxes(title='Number of Titles')
+        
+        # Enhance overall layout aesthetics
+        fig.update_layout(
+            margin=dict(t=50, l=50, r=25, b=50),
+            xaxis=dict(showgrid=False),
+            yaxis=dict(showgrid=True, gridcolor='LightGray')
+        )
         return fig
     else:
-        return go.Figure()
+        # Create an empty figure with a "No data available" message
+        fig = go.Figure()
+        fig.update_layout(
+            title="Number of Titles by Transaction Year and Media Type",
+            annotations=[
+                dict(
+                    text="No data available",
+                    x=0.5,
+                    y=0.5,
+                    showarrow=False,
+                    font=dict(size=20)
+                )
+            ],
+            xaxis=dict(
+                visible=False
+            ),
+            yaxis=dict(
+                visible=False
+            )
+        )
+        return fig
+
+def create_top_publishers_bar_chart(filtered_data):
+    if not filtered_data.empty:
+        top_publishers = filtered_data['Title Publisher'].value_counts().head(10).reset_index()
+        top_publishers.columns = ['Title Publisher', 'Count']
+        fig = px.bar(
+            top_publishers,
+            x='Count',
+            y='Title Publisher',
+            orientation='h',
+            title='Top 10 Publishers by Number of Titles',
+            labels={'Count': 'Number of Titles', 'Title Publisher': 'Publisher'},
+            color='Count',
+            color_continuous_scale='Blues',
+            height=500
+        )
+        fig.update_layout(
+            margin=dict(t=50, l=100, r=25, b=50),
+            yaxis=dict(autorange="reversed"),  # Highest count on top
+            coloraxis_showscale=True
+        )
+        return fig
+    else:
+        fig = go.Figure()
+        fig.update_layout(
+            title="Top 10 Publishers by Number of Titles",
+            annotations=[dict(text="No data available", x=0.5, y=0.5, showarrow=False)]
+        )
+        return fig
+
+def create_top_authors_bar_chart(filtered_data):
+    if not filtered_data.empty:
+        top_authors = filtered_data['Title Author'].value_counts().head(10).reset_index()
+        top_authors.columns = ['Title Author', 'Count']
+        fig = px.bar(
+            top_authors,
+            x='Count',
+            y='Title Author',
+            orientation='h',
+            title='Top 10 Authors by Number of Titles',
+            labels={'Count': 'Number of Titles', 'Title Author': 'Author'},
+            color='Count',
+            color_continuous_scale='Greens',
+            height=500
+        )
+        fig.update_layout(
+            margin=dict(t=50, l=100, r=25, b=50),
+            yaxis=dict(autorange="reversed"),  # Highest count on top
+            coloraxis_showscale=True
+        )
+        return fig
+    else:
+        fig = go.Figure()
+        fig.update_layout(
+            title="Top 10 Authors by Number of Titles",
+            annotations=[dict(text="No data available", x=0.5, y=0.5, showarrow=False)]
+        )
+        return fig
 
 def create_author_heatmap(filtered_data, top_n_authors):
     if not filtered_data.empty:
@@ -419,133 +594,232 @@ def create_author_heatmap(filtered_data, top_n_authors):
             fig = px.imshow(pivot_table.T, aspect='auto',
                             color_continuous_scale='Viridis_r',
                             title='Average Rank of Top Authors Over Years (Lower Rank is Better)')
-            fig.update_layout(margin=dict(t=50, l=25, r=25, b=25))
+            fig.update_layout(
+                xaxis_title='Transaction Calendar Year',  # Updated X-axis label
+                yaxis_title='Author',                      # Added Y-axis label for clarity
+                xaxis=dict(
+                    tickmode='linear',
+                    tick0=2020,
+                    dtick=1,
+                    range=[2019.5, 2023.5],  
+                ),
+                margin=dict(t=100, l=150, r=25, b=50)     # Adjusted margins for better layout
+            )
             return fig
         else:
-            return go.Figure()
+            fig = go.Figure()
+            fig.update_layout(
+                title="Average Rank of Top Authors Over Years",
+                annotations=[dict(text="No data available", x=0.5, y=0.5, showarrow=False)]
+            )
+            return fig
     else:
-        return go.Figure()
+        fig = go.Figure()
+        fig.update_layout(
+            title="Average Rank of Top Authors Over Years",
+            annotations=[dict(text="No data available", x=0.5, y=0.5, showarrow=False)]
+        )
+        return fig
 
+# Updated Rank Trend Line Chart Function
 def create_rank_trend_line_chart(filtered_data, selected_titles):
     if not filtered_data.empty:
         if selected_titles:
             line_data = filtered_data[filtered_data['Title Native Name'].isin(selected_titles)]
             if not line_data.empty:
-                fig = px.line(line_data, x='Txn Calendar Year', y='Rank', color='Title Native Name',
-                              title='Rank Trend of Titles Over Years (Lower Rank is Better)', markers=True)
-                fig.update_layout(legend=dict(orientation="h", title='Title', y=-0.2),
-                                  xaxis=dict(tickmode='linear'),
-                                  margin=dict(t=50, l=25, r=25, b=25))
-                fig.update_yaxes(autorange='reversed')
+                fig = px.line(
+                    line_data,
+                    x='Txn Calendar Year',
+                    y='Rank',
+                    color='Title Native Name',
+                    title='Rank Trend of Titles Over Years (Lower Rank is Better)',
+                    markers=True
+                )
+                
+                # Update marker properties to enhance visibility
+                fig.update_traces(
+                    marker=dict(size=10),
+                    cliponaxis=False  # Prevent markers from being clipped
+                )
+                
+                # Update layout with extended x-axis range and increased margins
+                fig.update_layout(
+                    legend=dict(
+                        orientation="h",
+                        title='Title',
+                        y=-0.2
+                    ),
+                    xaxis=dict(
+                        tickmode='linear',
+                        tick0=2020,
+                        dtick=1,
+                        range=[2020, 2023],  # Added padding to x-axis
+                        title='Transaction Calendar Year'
+                    ),
+                    yaxis=dict(
+                        title='Rank',
+                        autorange='reversed'  # Ensures lower ranks are higher on the axis
+                    ),
+                    margin=dict(
+                        t=100,
+                        l=60,   # Increased left margin
+                        r=60,   # Increased right margin
+                        b=100
+                    )
+                )
+                
                 return fig
             else:
                 fig = go.Figure()
-                fig.add_annotation(
-                    x=0.5, y=0.5,
-                    text="Selected titles not found in the filtered data.",
-                    showarrow=False,
-                    xref="paper", yref="paper",
-                    font=dict(size=16),
-                    xanchor='center', yanchor='middle'
+                fig.update_layout(
+                    title="Rank Trend of Titles Over Years",
+                    annotations=[
+                        dict(
+                            text="Selected titles not found in the filtered data.",
+                            x=0.5,
+                            y=0.5,
+                            showarrow=False
+                        )
+                    ]
                 )
-                fig.update_layout(margin=dict(t=50, l=25, r=25, b=25))
                 return fig
         else:
             # No titles selected, return an empty figure with a message
             fig = go.Figure()
             fig.add_annotation(
-                x=0.5, y=0.5,
+                x=0.5,
+                y=0.5,
                 text="Please select at least one title to display the rank trend.",
                 showarrow=False,
-                xref="paper", yref="paper",
+                xref="paper",
+                yref="paper",
                 font=dict(size=16),
-                xanchor='center', yanchor='middle'
+                xanchor='center',
+                yanchor='middle'
             )
-            fig.update_layout(margin=dict(t=50, l=25, r=25, b=25))
+            fig.update_layout(
+                title="Rank Trend of Titles Over Years",
+                margin=dict(t=100, l=50, r=25, b=100)
+            )
             return fig
     else:
-        return go.Figure()
+        # No data available after filtering
+        fig = go.Figure()
+        fig.update_layout(
+            title="Rank Trend of Titles Over Years",
+            annotations=[
+                dict(
+                    text="No data available",
+                    x=0.5,
+                    y=0.5,
+                    showarrow=False
+                )
+            ]
+        )
+        return fig
 
 # Callbacks for interactivity
 @app.callback(
-    Output('total-titles', 'children'),
-    Output('total-authors', 'children'),
-    Output('total-publishers', 'children'),
-    Output('time-span', 'children'),
-    Output('media-type-donut', 'figure'),
-    Output('category-distribution-donut', 'figure'),
-    Output('top-publishers-bar', 'figure'),
-    Output('top-authors-bar', 'figure'),
-    Output('publication-year-stacked-bar', 'figure'),
-    Output('custom-chart', 'figure'),
-    Output('author-heatmap', 'figure'),
-    Output('rank-trend-line', 'figure'),
-    Input('year-filter', 'value'),
-    Input('subject-filter', 'value'),
-    Input('media-filter', 'value'),
-    Input('publication-date-slider', 'value'),
-    Input('top-authors-slider', 'value'),
-    Input('title-filter', 'value'),
-    Input('author-filter', 'value'),
-    Input('publisher-filter', 'value'),
-    Input('fiction-filter', 'value'),
+    [
+        Output('total-titles', 'children'),
+        Output('total-authors', 'children'),
+        Output('total-publishers', 'children'),
+        Output('earliest-publication', 'children'),   # New Output
+        Output('latest-publication', 'children'),     # New Output
+        Output('media-type-donut', 'figure'),
+        Output('category-distribution-donut', 'figure'),
+        Output('overdrive-distribution', 'figure'),   # New Output
+        Output('top-publishers-bar', 'figure'),       # New Output
+        Output('top-authors-bar', 'figure'),          # New Output
+        Output('publication-year-stacked-bar', 'figure'),
+        Output('custom-chart', 'figure'),
+        Output('author-heatmap', 'figure'),
+        Output('rank-trend-line', 'figure'),
+    ],
+    [
+        Input('year-filter', 'value'),
+        Input('subject-filter', 'value'),
+        Input('media-filter', 'value'),
+        Input('publication-start-date-filter', 'date'),  # New Input
+        Input('publication-end-date-filter', 'date'),    # New Input
+        Input('top-authors-slider', 'value'),
+        Input('title-filter', 'value'),
+        Input('author-filter', 'value'),
+        Input('publisher-filter', 'value'),
+        Input('fiction-filter', 'value'),
+    ]
 )
 def update_charts(selected_years, selected_subjects, selected_media,
-                  publication_year_range, top_n_authors, selected_titles,
-                  selected_authors, selected_publishers, selected_fiction):
+                  publication_start_date, publication_end_date, top_n_authors,
+                  selected_titles, selected_authors, selected_publishers, selected_fiction):
     # Filter data based on selections
-    filtered_data = data
+    filtered_data = data.copy()
 
     if selected_years:
-        filtered_data = filtered_data.loc[filtered_data['Txn Calendar Year'].isin(selected_years)]
+        filtered_data = filtered_data[filtered_data['Txn Calendar Year'].isin(selected_years)]
 
     if selected_subjects:
-        filtered_data = filtered_data.loc[filtered_data['Subject'].isin(selected_subjects)]
+        filtered_data = filtered_data[filtered_data['Subject'].isin(selected_subjects)]
 
     if selected_media:
-        filtered_data = filtered_data.loc[filtered_data['Item Media'].isin(selected_media)]
+        filtered_data = filtered_data[filtered_data['Item Media'].isin(selected_media)]
 
-    if publication_year_range:
-        start_year, end_year = publication_year_range
-        filtered_data = filtered_data.loc[
-            (filtered_data['Publication Year'] >= start_year) &
-            (filtered_data['Publication Year'] <= end_year)
-        ]
+    if publication_start_date:
+        filtered_data = filtered_data[filtered_data['Title Publication Date'] >= pd.to_datetime(publication_start_date)]
+
+    if publication_end_date:
+        filtered_data = filtered_data[filtered_data['Title Publication Date'] <= pd.to_datetime(publication_end_date)]
 
     if selected_authors:
-        filtered_data = filtered_data.loc[filtered_data['Title Author'].isin(selected_authors)]
+        filtered_data = filtered_data[filtered_data['Title Author'].isin(selected_authors)]
 
     if selected_publishers:
-        filtered_data = filtered_data.loc[filtered_data['Title Publisher'].isin(selected_publishers)]
+        filtered_data = filtered_data[filtered_data['Title Publisher'].isin(selected_publishers)]
 
     if selected_fiction:
-        filtered_data = filtered_data.loc[filtered_data['Title Fiction Tag'].isin(selected_fiction)]
+        filtered_data = filtered_data[filtered_data['Title Fiction Tag'].isin(selected_fiction)]
 
     # Update KPIs
     total_titles = filtered_data['Title Native Name'].nunique()
     total_authors = filtered_data['Title Author'].nunique()
     total_publishers = filtered_data['Title Publisher'].nunique()
 
-    # Time Span
-    min_year = filtered_data['Publication Year'].min()
-    max_year = filtered_data['Publication Year'].max()
-    time_span = f"{int(min_year)} - {int(max_year)}" if pd.notnull(min_year) and pd.notnull(max_year) else "N/A"
+    # Calculate Earliest and Latest Publication Dates
+    earliest_date = filtered_data['Title Publication Date'].min()
+    latest_date = filtered_data['Title Publication Date'].max()
+
+    # Format dates as strings for display, handle missing values
+    earliest_publication = earliest_date.strftime('%Y-%m-%d') if pd.notnull(earliest_date) else "N/A"
+    latest_publication = latest_date.strftime('%Y-%m-%d') if pd.notnull(latest_date) else "N/A"
 
     # Create charts using helper functions
     fig_media_donut = create_media_type_donut_chart(filtered_data)
     fig_category_donut = create_category_distribution_donut_chart(filtered_data)
-    fig_top_publishers_bar = create_top_publishers_bar_chart(filtered_data)
-    fig_top_authors_bar = create_top_authors_bar_chart(filtered_data)
+    fig_overdrive_distribution = create_overdrive_distribution_treemap(filtered_data)  # New
+    fig_top_publishers = create_top_publishers_bar_chart(filtered_data)               # New
+    fig_top_authors = create_top_authors_bar_chart(filtered_data)                     # New
     fig_publication_year_stacked_bar = create_publication_year_stacked_bar_chart(filtered_data)
     fig_custom_chart = create_transaction_year_media_type_chart(filtered_data)  # Custom chart
 
     fig_heatmap = create_author_heatmap(filtered_data, top_n_authors)
     fig_rank_trend = create_rank_trend_line_chart(filtered_data, selected_titles)
 
-    return (total_titles, total_authors, total_publishers, time_span,
-            fig_media_donut, fig_category_donut, fig_top_publishers_bar, fig_top_authors_bar,
-            fig_publication_year_stacked_bar, fig_custom_chart,
-            fig_heatmap, fig_rank_trend)
+    return (
+        total_titles,           
+        total_authors,         
+        total_publishers,       
+        earliest_publication,   
+        latest_publication,     
+        fig_media_donut,
+        fig_category_donut,
+        fig_overdrive_distribution,  # New
+        fig_top_publishers,          # New
+        fig_top_authors,             # New
+        fig_publication_year_stacked_bar,
+        fig_custom_chart,
+        fig_heatmap,
+        fig_rank_trend
+    )
 
 # Run the App
 if __name__ == '__main__':
