@@ -405,10 +405,10 @@ app.layout = dbc.Container([
                     dcc.Slider(
                         id='top-authors-slider',
                         min=5,
-                        max=15,
+                        max=20,
                         step=1,
                         value=10,
-                        marks={i: str(i) for i in range(5, 16, 1)},
+                        marks={i: str(i) for i in range(5, 21, 5)},
                         tooltip={"placement": "bottom", "always_visible": True},
                         className="mb-4"
                     ),
@@ -685,14 +685,14 @@ def create_top_authors_bar_chart(filtered_data):
         )
         return fig
 
-def create_author_heatmap(filtered_data, year, top_n_authors=10):
+def create_author_heatmap(filtered_data, year, top_authors=None):
     """
-    Creates a heatmap for average ranks of top N authors in a specific year.
+    Creates a heatmap for average ranks of top authors in a specific year.
     
     Parameters:
     - filtered_data (DataFrame): The filtered dataset based on user selections.
     - year (int): The specific year for which the heatmap is created.
-    - top_n_authors (int): Number of top authors to include in the heatmap.
+    - top_authors (list, optional): List of top N authors to include in the heatmap.
     
     Returns:
     - Figure: A Plotly Heatmap figure.
@@ -700,94 +700,79 @@ def create_author_heatmap(filtered_data, year, top_n_authors=10):
     # Filter data for the specific year
     year_data = filtered_data[filtered_data['Txn Calendar Year'] == year]
     
+    if top_authors:
+        year_data = year_data[filtered_data['Title Author'].isin(top_authors)]
+    
     if not year_data.empty:
-        # Determine top N authors for this year based on the number of titles
-        top_authors = year_data['Title Author'].value_counts().nlargest(top_n_authors).index.tolist()
+        # Aggregate data by 'Title Author'
+        pivot_table = year_data.groupby('Title Author').agg(
+            Average_Rank=('Rank', 'mean'),
+            Ranks=('Rank', list),
+            Titles=('Title Native Name', list)
+        ).reset_index()
         
-        # Filter the data for these top authors
-        year_data = year_data[year_data['Title Author'].isin(top_authors)]
+        # Sort authors by average rank (ascending)
+        pivot_table_sorted = pivot_table.sort_values(by='Average_Rank')
         
-        if not year_data.empty:
-            # Aggregate data by 'Title Author'
-            pivot_table = year_data.groupby('Title Author').agg(
-                Average_Rank=('Rank', 'mean'),
-                Ranks=('Rank', list),
-                Titles=('Title Native Name', list)
-            ).reset_index()
-            
-            # Sort authors by average rank (ascending)
-            pivot_table_sorted = pivot_table.sort_values(by='Average_Rank')
-            
-            # Create the tooltip string with truncated titles
-            pivot_table_sorted['Ranks_str'] = pivot_table_sorted.apply(
-                lambda row: generate_ranks_str(row['Titles'], row['Ranks']),
-                axis=1
-            )
-            
-            # Reshape 'Ranks_str' to a 2D list for 'text' parameter
-            text_reshaped = pivot_table_sorted['Ranks_str'].apply(lambda x: [x]).tolist()
-            
-            # Create Heatmap using go.Heatmap with 'text'
-            fig = go.Figure(
-                data=go.Heatmap(
-                    z=pivot_table_sorted['Average_Rank'].values.reshape(-1, 1),  # Single column
-                    x=['Average Rank'],  # Single label
-                    y=pivot_table_sorted['Title Author'],
-                    colorscale='Viridis',      # Use standard Viridis
-                    reversescale=True,        # Lower ranks should have distinct color
-                    colorbar=dict(title="Avg Rank"),
-                    hoverongaps=False,
-                    zmin=pivot_table_sorted['Average_Rank'].min(),
-                    zmax=pivot_table_sorted['Average_Rank'].max(),
-                    showscale=True,
-                    text=text_reshaped,  # Use 'text' for hover information
-                    hovertemplate=
-                        '<b>%{y}</b><br>' +
-                        'Average Rank: %{z:.1f}<br>' +
-                        'Title-Rank:<br>' +
-                        '%{text}<br>' +
-                        '<extra></extra>',
-                    hoverlabel=dict(
-                        align='left',          
-                        bgcolor="rgba(255, 255, 255, 0.9)",  # Semi-transparent white background
-                        font=dict(
-                            size=12,           
-                            color="black",     
-                            family="Arial"     
-                        )
+        # Create the tooltip string with truncated titles
+        pivot_table_sorted['Ranks_str'] = pivot_table_sorted.apply(
+            lambda row: generate_ranks_str(row['Titles'], row['Ranks']),
+            axis=1
+        )
+        
+        # Reshape 'Ranks_str' to a 2D list for 'text' parameter
+        text_reshaped = pivot_table_sorted['Ranks_str'].apply(lambda x: [x]).tolist()
+        
+        # Create Heatmap using go.Heatmap with 'text'
+        fig = go.Figure(
+            data=go.Heatmap(
+                z=pivot_table_sorted['Average_Rank'].values.reshape(-1, 1),  # Single column
+                x=['Average Rank'],  # Single label
+                y=pivot_table_sorted['Title Author'],
+                colorscale='Viridis',      # Use standard Viridis
+                reversescale=True,        # Do not reverse the colorscale
+                colorbar=dict(title="Avg Rank"),
+                hoverongaps=False,
+                zmin=pivot_table_sorted['Average_Rank'].min(),
+                zmax=pivot_table_sorted['Average_Rank'].max(),
+                showscale=True,
+                text=text_reshaped,  # Use 'text' instead of 'customdata'
+                hovertemplate=
+                    '<b>%{y}</b><br>' +
+                    'Average Rank: %{z:.1f}<br>' +  # Format to one decimal place
+                    'Title-Rank:<br>' +              # Changed "Ranks:" to "Title-Rank:"
+                    '%{text}<br>' +
+                    '<extra></extra>',
+                hoverlabel=dict(
+                    align='left',          # Align text to the left for better readability
+                    bgcolor="rgba(255, 255, 255, 0.9)",  # Semi-transparent white background
+                    font=dict(
+                        size=12,           # Adjust font size as needed
+                        color="black",     # Text color
+                        family="Arial"     # Font family
                     )
                 )
             )
-            
-            # Update layout with increased top margin and normal y-axis orientation
-            fig.update_layout(
-                title=f'Average Rank of Top {top_n_authors} Authors in {year}',
-                xaxis_title='',
-                yaxis_title='Author',
-                yaxis=dict(autorange='reversed'),  # Highest rank at top
-                xaxis=dict(showticklabels=False),  # Hide x-axis labels
-                margin=dict(t=150, l=200, r=50, b=50),  # Increased top margin
-                template='plotly_white',  # Use a white template for better contrast
-                hovermode='closest'  # Ensures that hover events are accurately captured
-            )
-            
-            return fig
-        else:
-            # No data available for the top N authors
-            fig = go.Figure()
-            fig.update_layout(
-                title=f"Average Rank of Top {top_n_authors} Authors in {year}",
-                annotations=[dict(text="No data available", x=0.5, y=0.5, showarrow=False)],
-                xaxis=dict(visible=False),
-                yaxis=dict(visible=False),
-                template='plotly_white'
-            )
-            return fig
+        )
+        
+        # Update layout with increased top margin and normal y-axis orientation
+        fig.update_layout(
+            title=f'Average Rank of Top Authors in {year}',
+            xaxis_title='',
+            yaxis_title='Author',
+            yaxis=dict(autorange='reversed'),  # Do not reverse the y-axis; highest rank at top
+            xaxis=dict(showticklabels=False),  # Hide x-axis labels
+            margin=dict(t=150, l=200, r=50, b=50),  # Increased top margin
+            template='plotly_white',  # Use a white template for better contrast
+            hovermode='closest'  # Ensures that hover events are accurately captured
+        )
+        
+        return fig
     else:
         # No data available for the specific year
         fig = go.Figure()
         fig.update_layout(
-            title=f"Average Rank of Top {top_n_authors} Authors in {year}",
+            title=f"Average Rank of Top Authors in {year}",
             annotations=[dict(text="No data available", x=0.5, y=0.5, showarrow=False)],
             xaxis=dict(visible=False),
             yaxis=dict(visible=False),
@@ -978,10 +963,16 @@ def update_charts(selected_years, selected_subjects, selected_media,
     fig_publication_year_stacked_bar = create_publication_year_stacked_bar_chart(filtered_data)
     fig_custom_chart = create_transaction_year_media_type_chart(filtered_data)
 
+    # Determine Top N Authors
+    if top_n_authors and top_n_authors > 0:
+        top_authors = filtered_data['Title Author'].value_counts().nlargest(top_n_authors).index.tolist()
+    else:
+        top_authors = []
+
     # Create heatmaps for each year using Top N Authors
     heatmap_figs = []
     for year in HEATMAP_YEARS:
-        fig = create_author_heatmap(filtered_data, year, top_n_authors)
+        fig = create_author_heatmap(filtered_data, year, top_authors)
         heatmap_figs.append(fig)
 
     # Create Rank Trend Line Chart
