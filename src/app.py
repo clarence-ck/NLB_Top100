@@ -142,7 +142,7 @@ app.layout = dbc.Container([
     ),
 
     # Spacer for fixed Navbar
-    html.Div(style={'height': '100px'}),  # Increased height to accommodate larger Navbar image
+    html.Div(style={'height': '140px'}),  # Increased height to accommodate larger Navbar image
 
     # Header and Description
     dbc.Row([
